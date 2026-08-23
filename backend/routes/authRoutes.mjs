@@ -17,4 +17,8 @@ router.get('/profile',verifyAccessToken, (req,res)=>{
     });
 });
 
+router.get('/me', verifyAccessToken, (req, res) => {
+  res.json({ data: { userId: req.userId } });
+});
+
 export default router;

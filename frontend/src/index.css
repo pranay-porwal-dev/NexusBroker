@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Dark mode defaults */
+:root {
+  --green:          #00b386;
+  --green-bg:       rgba(0, 179, 134, 0.08);
+  --green-border:   rgba(0, 179, 134, 0.2);
+  --red:            #eb5757;
+  --red-bg:         rgba(235, 87, 87, 0.08);
+  --red-border:     rgba(235, 87, 87, 0.2);
+  --blue:           #1d6ce5;
+  --blue-bg:        rgba(29, 108, 229, 0.08);
+  --yellow:         #f4b942;
+
+  --bg:             #0f0f10;
+  --bg-card:        #1a1a1b;
+  --bg-input:       #242425;
+  --border:         #2d2d2e;
+  --border-hover:   #3d3d3e;
+
+  --text-primary:   #ffffff;
+  --text-secondary: #9b9b9b;
+  --text-muted:     #5a5a5a;
+
+  --nav-bg:         #111112;
+  --nav-border:     #1f1f20;
+
+  --font:           'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+button { cursor: pointer; font-family: var(--font); }
+input, select, textarea { font-family: var(--font); font-size: 14px; }
+input:focus, select:focus, textarea:focus { outline: none; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Animations */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes toastIn {
+  from { transform: translateX(60px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+/* Page backgrounds */
+.nexus-page { background: var(--bg) !important; color: var(--text-primary) !important; }
+.nexus-card { background: var(--bg-card) !important; border-color: var(--border) !important; }
+.nexus-input { background: var(--bg-input) !important; border-color: var(--border) !important;
+               color: var(--text-primary) !important; }
+.nexus-nav { background: var(--nav-bg) !important; border-color: var(--nav-border) !important; }
+.nexus-text-secondary { color: var(--text-secondary) !important; }
+.nexus-text-muted { color: var(--text-muted) !important; }
+.nexus-border { border-color: var(--border) !important; }
+
+/* Sticky navbar — applied via className */
+.nexus-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}

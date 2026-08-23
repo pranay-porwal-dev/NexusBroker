@@ -124,6 +124,8 @@ async function runMigrations() {
                 exchange      ENUM('NSE','BSE') NOT NULL DEFAULT 'NSE',
                 instrument_type ENUM('EQUITY','ETF','FUTURE','OPTION') NOT NULL DEFAULT 'EQUITY',
                 lot_size      INT UNSIGNED NOT NULL DEFAULT 1,
+                sector        VARCHAR(100) NULL,
+                domain        VARCHAR(100) NULL,
                 is_active     BOOLEAN DEFAULT TRUE,
                 created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_symbol_exchange (symbol, exchange)

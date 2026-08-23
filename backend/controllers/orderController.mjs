@@ -43,107 +43,104 @@ export const placeOrder = async (req, res, next) => {
                 });
             }
 
-            if (side === "BUY") {
 
+            if (side === "BUY") {
                 const [walletRows] = await connection.execute(
-                    `SELECT id, balance, reserved, version
-                     FROM wallets
-                     WHERE user_id = ?
-                     FOR UPDATE`,
+                    `SELECT id, balance, reserved, version FROM wallets WHERE user_id = ? FOR UPDATE`,
                     [userId]
                 );
-
+            
                 if (walletRows.length === 0) {
                     await connection.rollback();
                     return res.status(404).json({ error: "Wallet not found." });
                 }
-
-                const walletId = walletRows[0].id;
-                const totalBalance = parseInt(walletRows[0].balance, 10);
+            
+                const walletId        = walletRows[0].id;
+                const totalBalance    = parseInt(walletRows[0].balance, 10);
                 const currentReserved = parseInt(walletRows[0].reserved, 10);
-                const currentVersion = parseInt(walletRows[0].version, 10);
-
                 const availableBalance = totalBalance - currentReserved;
-
-                if (price === null) {
-                    await connection.rollback();
-                    return res.status(400).json({
-                        error: "MARKET orders require a price estimate for fund reservation in this version. Full MARKET order support coming with the order matching engine.",
-                    });
+            
+                let reservationAmount;
+                let reservationPrice;
+            
+                if (order_type === 'MARKET') {
+                    const { priceSimulator } = await import('../websockets/priceSimulator.mjs');
+                    const currentPricePaise = priceSimulator.getPrice(instrument.symbol);
+                
+                    if (!currentPricePaise) {
+                        await connection.rollback();
+                        return res.status(400).json({
+                            error: "No market price available for this instrument. Try a LIMIT order.",
+                        });
+                    }
+                
+                    // 5% buffer: reserve slightly more than current price to handle slippage
+                    reservationPrice  = Math.round(currentPricePaise * 1.05);
+                    reservationAmount = quantity * reservationPrice;
+                } else {
+                    reservationPrice  = price;
+                    reservationAmount = quantity * price;
                 }
-
-                const reservationAmount = quantity * price;
-
+            
                 if (availableBalance < reservationAmount) {
                     await connection.rollback();
                     return res.status(400).json({
                         error: `Insufficient available funds. Available: ₹${(availableBalance / 100).toFixed(2)}, Required: ₹${(reservationAmount / 100).toFixed(2)}`,
                     });
                 }
-
+            
                 const ledgerId = crypto.randomUUID();
                 await connection.execute(
                     `INSERT INTO ledger
                        (id, wallet_id, type, amount, transaction_category,
                         payment_channel, reference_id, balance_after)
                      VALUES (?, ?, 'DEBIT', ?, 'ORDER_RESERVE', 'INTERNAL', ?, ?)`,
-                    [
-                        ledgerId,
-                        walletId,
-                        reservationAmount,
-                        `ORD-RES-${orderId}`,  
-                        totalBalance,         
-                    ]
+                    [ledgerId, walletId, reservationAmount, `ORD-RES-${orderId}`, totalBalance]
                 );
-
+            
                 await connection.execute(
-                    `UPDATE wallets
-                     SET reserved = reserved + ?, version = version + 1
-                     WHERE user_id = ?`,
+                    `UPDATE wallets SET reserved = reserved + ?, version = version + 1 WHERE user_id = ?`,
                     [reservationAmount, userId]
                 );
-
+            
                 await connection.execute(
                     `INSERT INTO orders
                        (id, user_id, instrument_id, side, order_type, quantity,
                         filled_quantity, price, status, product_type, reserved)
                      VALUES (?, ?, ?, 'BUY', ?, ?, 0, ?, 'PENDING', ?, ?)`,
-                    [
-                        orderId, userId, instrument_id,
-                        order_type, quantity, price,
-                        product_type, reservationAmount
-                    ]
+                    [orderId, userId, instrument_id, order_type, quantity,
+                     order_type === 'MARKET' ? null : price, product_type, reservationAmount]
                 );
-
+            
                 await connection.commit();
-
+            
                 setImmediate(() => {
                     engine.processOrder({
-                        id: orderId,
+                        id:           orderId,
                         userId,
                         instrumentId: instrument_id,
-                        symbol: instrument.symbol,
-                        side: 'BUY',
-                        orderType: order_type,
+                        symbol:       instrument.symbol,
+                        side:         'BUY',
+                        orderType:    order_type,
                         quantity,
-                        price: price,
-                        productType: product_type,
-                        createdAt: new Date(),
+                        price:        order_type === 'MARKET' ? null : price,
+                        productType:  product_type,
+                        createdAt:    new Date(),
                     }).catch(err => console.error('[Engine] BUY processing error:', err));
                 });
-
+            
                 return res.status(201).json({
                     message: "BUY order placed successfully.",
                     data: {
-                        order_id: orderId,
-                        instrument: instrument.symbol,
-                        side: "BUY",
+                        order_id:          orderId,
+                        instrument:        instrument.symbol,
+                        side:              "BUY",
                         order_type,
                         quantity,
-                        price: price / 100,
+                        price:             order_type === 'MARKET' ? null : price / 100,
                         product_type,
-                        status: "PENDING",
-                        reserved_amount: reservationAmount / 100,
+                        status:            "PENDING",
+                        reserved_amount:   reservationAmount / 100,
                         available_balance: (availableBalance - reservationAmount) / 100,
                     },
                 });
@@ -192,7 +189,8 @@ export const placeOrder = async (req, res, next) => {
                      VALUES (?, ?, ?, 'SELL', ?, ?, 0, ?, 'PENDING', ?, 0)`,
                     [
                         orderId, userId, instrument_id,
-                        order_type, quantity, price,
+                        order_type, quantity,
+                        order_type === 'MARKET' ? null : price,
                         product_type
                     ]
                 );
@@ -208,7 +206,7 @@ export const placeOrder = async (req, res, next) => {
                     side: 'SELL',
                     orderType: order_type,
                     quantity,
-                    price: price,
+                    price: order_type==='MARKET' ? null : price,
                     productType: product_type,
                     createdAt: new Date(),
                 }).catch(err => console.error('[Engine] SELL processing error:', err));
@@ -266,7 +264,7 @@ export const getUserOrders = async (req, res, next) => {
             SELECT o.id, o.side, o.order_type, o.quantity, o.filled_quantity,
                    o.price, o.status, o.product_type, o.reserved,
                    o.created_at, o.updated_at,
-                   i.symbol, i.company_name, i.exchange
+                   i.symbol, i.company_name, i.exchange, i.domain, i.sector
             FROM orders o
             JOIN instruments i ON o.instrument_id = i.id
             WHERE o.user_id = ?
@@ -289,7 +287,7 @@ export const getUserOrders = async (req, res, next) => {
 
         const formatted = orders.map(o => ({
             order_id: o.id,
-            instrument: { symbol: o.symbol, company: o.company_name, exchange: o.exchange },
+            instrument: { symbol: o.symbol, company: o.company_name, exchange: o.exchange, domain: o.domain, sector: o.sector },
             side: o.side,
             order_type: o.order_type,
             quantity: o.quantity,

@@ -7,6 +7,7 @@ class PriceServer {
         this.lastPrices = new Map();
         this.pendingQueries = new Map();
         this.wss = null;
+        this.getFallbackPrice = null;
     }
 
     attach(httpServer) {
@@ -98,16 +99,20 @@ class PriceServer {
                     return this._send(ws, { type: 'error', message: 'symbol is required' });
                 }
 
-                const [rows] = await pool.execute(
-                    'SELECT id FROM instruments WHERE symbol = ? AND is_active = TRUE',
-                    [symbol]
-                );
+                const SYNTHETIC_INDICES = new Set(['NIFTY 50', 'SENSEX', 'BANK NIFTY', 'NIFTY IT']);
 
-                if (rows.length === 0) {
-                    return this._send(ws, {
-                        type: 'error',
-                        message: `Unknown instrument: ${symbol}`,
-                    });
+                if (!SYNTHETIC_INDICES.has(symbol)) {
+                    const [rows] = await pool.execute(
+                        'SELECT id FROM instruments WHERE symbol = ? AND is_active = TRUE',
+                        [symbol]
+                    );
+
+                    if (rows.length === 0) {
+                        return this._send(ws, {
+                           type: 'error',
+                            message: `Unknown instrument: ${symbol}`,
+                        });
+                    }
                 }
 
                 if (!this.subscriptions.has(symbol)) {
@@ -211,7 +216,9 @@ async _getLastTradedPrice(symbol) {
             this.lastPrices.set(symbol, price); 
             return price;
         }
-        return null; 
+        const simPrice = this.getFallbackPrice?.(symbol) ?? null;
+        if (simPrice) this.lastPrices.set(symbol, simPrice);
+        return simPrice;
     })
     .finally(() => {
         this.pendingQueries.delete(symbol);

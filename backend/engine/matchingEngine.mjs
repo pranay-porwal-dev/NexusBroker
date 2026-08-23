@@ -40,7 +40,7 @@ class MatchingEngine {
         orderType: order.order_type,
         quantity: order.quantity,
         remainingQty: order.quantity - order.filled_quantity,
-        price: parseInt(order.price, 10),
+        price: order.price!==null ? parseInt(order.price, 10) : null,
         productType: order.product_type,
         createdAt: order.created_at,
       });
@@ -102,9 +102,21 @@ class MatchingEngine {
             }
         
             const tradeQty = Math.min(bid.remainingQty, ask.remainingQty);
-            const tradePrice = ask.price;
+            let tradePrice;
+            if (ask.orderType === 'LIMIT' && ask.price !== null) {
+              tradePrice = ask.price;               
+            } else if (bid.orderType === 'LIMIT' && bid.price !== null) {
+              tradePrice = bid.price;             
+            } else {
+              const { priceSimulator } = await import('../websockets/priceSimulator.mjs');
+              tradePrice = priceSimulator.getPrice(book.symbol);
+              if (!tradePrice) {
+                console.error(`[Engine] Cannot match MARKET vs MARKET for ${book.symbol} — no reference price`);
+                break;
+              }
+            }
+          
             const tradeValue = tradeQty * tradePrice;
-        
             await this._settleTrade({ book, bid, ask, tradeQty, tradePrice, tradeValue });
         }
   }
@@ -150,10 +162,11 @@ class MatchingEngine {
         reserved: parseInt(sellerWalletRow.reserved, 10),
       };
 
-      const reservedRelease = tradeQty * bid.price;
+      const reservedPerUnit = bid.price ?? tradePrice;
+      const reservedRelease = tradeQty * reservedPerUnit;
 
-      const buyerNewBalance = buyer.balance - tradeValue;
-      const buyerNewReserved = buyer.reserved - reservedRelease;
+      const buyerNewBalance  = buyer.balance - tradeValue;
+      const buyerNewReserved = Math.max(0, buyer.reserved - reservedRelease);
       const sellerNewBalance = seller.balance + tradeValue;
 
       await connection.execute(
@@ -400,8 +413,8 @@ class MatchingEngine {
       );
 
       if (order.side === 'BUY') {
-
-        const filledValue = order.filled_quantity * parseInt(order.price, 10);
+        const unitPrice   = order.price !== null ? parseInt(order.price, 10) : 0;
+        const filledValue = order.filled_quantity * unitPrice;
         const releaseAmount = parseInt(order.reserved, 10) - filledValue;
 
         if (releaseAmount > 0) {
@@ -487,7 +500,7 @@ async _cancelOrderInDB(order, side) {
 
         if (side === 'BUY') {
 
-            const releaseAmount = order.remainingQty * order.price;
+            const releaseAmount = order.remainingQty * (order.price ?? 0);
 
             const [walletRows] = await connection.execute(
                 `SELECT id, balance FROM wallets WHERE user_id = ? FOR UPDATE`,

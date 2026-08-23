@@ -1,33 +1,72 @@
-# NexusBroker 📈
-**High-Concurrency Event-Driven Trading Engine & Brokerage Platform**
+# NexusBroker
 
-NexusBroker is a production-grade, full-stack stock brokerage prototype built from first principles. Designed to handle the strict data integrity, concurrency, and real-time streaming requirements of financial markets, avoiding heavy ORM abstractions in favor of bare-metal SQL and optimized memory management.
+A production-grade stock trading platform built from scratch — inspired by Zerodha and Groww.
 
-## 🚀 Architectural Highlights
+## Live Demo
+- **Frontend:** https://nexusbroker.vercel.app
+- **Backend API:** https://nexusbroker.railway.app/api/health
+- **Demo login:** arjun@demo.com / Demo@1234
 
-* **ACID-Compliant Financial Ledger:** Built on MySQL with strict `ON DELETE RESTRICT` constraints. Transactions are guarded using **Pessimistic Locking (`SELECT ... FOR UPDATE`)** and Optimistic Concurrency Control (OCC versioning) to strictly prevent race conditions and wallet overdrafts during concurrent order placement.
-* **Zero Floating-Point Corruption:** All monetary values (wallet balances, asset pricing) are computed and stored strictly as integers (Paise/Cents). Division to decimals (Rupees) occurs exclusively at the response boundary to prevent IEEE 754 floating-point precision leaks.
-* **In-Memory Order Matching Engine:** Custom matching engine enforcing strict price-time priority and Maker-Taker logic. Implements deterministic self-cross (wash trade) prevention.
-* **Pub/Sub WebSocket Streaming:** Zero-dependency, native WebSocket server attached to the HTTP listener. Uses an in-memory `Map<Symbol, Set<Connections>>` registry to broadcast live trade executions (tick data) in $O(1)$ time. Integrates native TCP Ping/Pong frames to actively sweep dead connections and prevent memory leaks.
-* **Bulletproof Auth:** Stateless JWT architecture with cryptographically secure opaque refresh tokens, bcrypt hashing, and sliding-window lockout defense.
+## Features
+- Custom order matching engine with price-time priority and partial fills
+- Real-time price feed via WebSocket (50 NSE instruments + synthetic indices)
+- Geometric Brownian Motion price simulator (same model as Black-Scholes)
+- ACID transactions for all money movement — no float bugs (integer paise)
+- Wash trade prevention, deadlock-safe wallet locking
+- JWT authentication with httpOnly cookies + refresh token rotation
+- Live P&L dashboard, order management, wallet management
 
-## 🛠️ Tech Stack
+## Tech Stack
+| Layer | Technology |
+|-------|-----------|
+| Backend | Node.js, Express.js, MySQL 8.0 |
+| Frontend | React, Vite, React Router v6 |
+| Real-time | WebSocket (native ws library) |
+| Auth | JWT + opaque refresh tokens + bcrypt |
+| Database | MySQL with mysql2 connection pool |
 
-**Backend:** Node.js, Express.js, Native WebSockets (ws)
-**Database:** MySQL 8.0 (mysql2 wrapper)
-**Frontend:** React.js, Tailwind CSS *(In Progress)*
-**Testing:** Native Node.js test runner handling 148 concurrent E2E assertions
+## Local Setup
 
-## 🧪 E2E Test Suite
+### Backend
+```bash
+cd backend
+cp .env.example .env      # fill in your values
+npm install
+node migrateDB.mjs        # create tables
+node resetAndSeed.mjs     # seed demo data
+node server.mjs           # start server
+```
 
-The backend integrity is verified by `master_test.mjs`, an automated 15-suite testing pipeline that bypasses HTTP standard testing to verify raw database state. It tests:
-1. Multi-tenant session isolation.
-2. Concurrent wallet reservations and deadlock prevention.
-3. Order book partial fills and price-improvement cash leak prevention.
-4. WebSocket sub/unsub routing isolation.
-5. End-of-day ledger reconciliation (wallet balances vs. append-only ledger snapshots).
+### Frontend
+```bash
+cd frontend
+cp .env.example .env      # fill in your values
+npm install
+npm run dev
+```
 
-To run the gauntlet:
+### Demo Credentials
+| User | Email | Password | Role |
+|------|-------|----------|------|
+| Arjun Mehta | arjun@demo.com | Demo@1234 | Buyer (₹5L balance) |
+| Priya Shah | priya@demo.com | Demo@1234 | Seller (holds shares) |
+
+## Architecture Highlights
+
+**Order Matching Engine:** Price-time priority, O(1) best bid/ask, partial fills, wash trade prevention via self-cross detection.
+
+**Race Condition Prevention:** MySQL `SELECT ... FOR UPDATE` with consistent UUID sort order prevents deadlocks and double-spending.
+
+**Event Sourcing:** The `trades` table is append-only. Portfolio state is always derived from trade history — never modified in-place.
+
+**WebSocket Architecture:** One connection per user, pub-sub broker pattern inside React Context, auto-reconnect with exponential backoff.
+
+## API Reference
+See `/api/health` for service status. All endpoints require JWT via httpOnly cookie except `/api/auth/register` and `/api/auth/login`.
+
+## Running Tests
 ```bash
 cd backend
 node test/master_test.mjs
+```
+148+ automated checks covering auth, wallet, order matching, concurrency, WebSockets, and financial reconciliation.

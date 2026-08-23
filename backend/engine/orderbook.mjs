@@ -27,39 +27,34 @@ export class OrderBook {
     getBestBid() { return this.bids[0] || null; }
     getBestAsk() { return this.asks[0] || null; }
 
+
     hasMatch() {
         const bid = this.getBestBid();
         const ask = this.getBestAsk();
         if (!bid || !ask) return false;
+        if (bid.orderType === 'MARKET' || ask.orderType === 'MARKET') return true;
         return bid.price >= ask.price;
     }
 
     _insertSorted(arr, order, side) {
-
         let insertAt = arr.length;
 
         for (let i = 0; i < arr.length; i++) {
             const existing = arr[i];
 
             if (side === 'BID') {
-                if (order.price > existing.price) {
-                    insertAt = i;
-                    break;
-                }
-                if (order.price === existing.price &&
-                    order.createdAt < existing.createdAt) {
-                    insertAt = i;
-                    break;
+                if (order.orderType === 'MARKET') { insertAt = 0; break; }
+                if (existing.orderType === 'MARKET') continue; 
+                if (order.price > existing.price) { insertAt = i; break; }
+                if (order.price === existing.price && order.createdAt < existing.createdAt) {
+                    insertAt = i; break;
                 }
             } else {
-                if (order.price < existing.price) {
-                    insertAt = i;
-                    break;
-                }
-                if (order.price === existing.price &&
-                    order.createdAt < existing.createdAt) {
-                    insertAt = i;
-                    break;
+                if (order.orderType === 'MARKET') { insertAt = 0; break; }
+                if (existing.orderType === 'MARKET') continue;
+                if (order.price < existing.price) { insertAt = i; break; }
+                if (order.price === existing.price && order.createdAt < existing.createdAt) {
+                    insertAt = i; break;
                 }
             }
         }
@@ -72,13 +67,15 @@ export class OrderBook {
             symbol: this.symbol,
             bids: this.bids.map(o => ({
                 orderId: o.id,
-                price: o.price / 100,
-                qty: o.remainingQty
+                price: o.price ? o.price / 100 : null,
+                qty: o.remainingQty,
+                type: o.orderType,
             })),
             asks: this.asks.map(o => ({
                 orderId: o.id,
-                price: o.price / 100,
-                qty: o.remainingQty
+                price: o.price ? o.price / 100 : null,
+                qty: o.remainingQty,
+                type: o.orderType
             })),
         };
     }

@@ -1,8 +1,5 @@
-// test_thundering_herd.mjs
-// Simulates 50 simultaneous subscribers to verify Promise coalescing works.
 // Run: node test_thundering_herd.mjs
 // Watch server logs — should see exactly 1 DB query, not 50.
-
 import { WebSocket } from 'ws';
 
 const NUM_CLIENTS = 50;

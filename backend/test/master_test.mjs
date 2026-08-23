@@ -1,4 +1,3 @@
-// master_test.mjs
 // NexusBroker — Complete Automated Test Suite
 // Run: node test/master_test.mjs
 // Requires: node server.mjs running on :3000, mysql2 + ws installed
@@ -11,7 +10,7 @@ import { WebSocket } from 'ws';
 const BASE      = 'http://localhost:3000';
 const DB_CONFIG = {
     host:     'localhost',
-    user:     'root',
+    user:     'user',           // ← your database user here
     password: 'XXXX',           // ← your password here
     database: 'nexusbroker',
 };

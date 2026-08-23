@@ -31,7 +31,9 @@ export const getPortfolio = async (req, res, next) => {
                 i.symbol,
                 i.company_name,
                 i.exchange,
-                i.instrument_type
+                i.instrument_type,
+                i.sector,
+                i.domain
              FROM positions p
              JOIN instruments i ON p.instrument_id = i.id
              WHERE p.user_id = ?
@@ -69,6 +71,8 @@ export const getPortfolio = async (req, res, next) => {
                     company_name:      pos.company_name,
                     exchange:          pos.exchange,
                     instrument_type:   pos.instrument_type,
+                    sector:            pos.sector,
+                    domain:            pos.domain,
                     product_type:      pos.product_type,
                     quantity:          qty,
                     locked_quantity:   locked,
