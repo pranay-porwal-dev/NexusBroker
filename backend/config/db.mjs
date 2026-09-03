@@ -5,9 +5,9 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 let poolConfig;
 
-if (process.env.DATABASE_URL) {
+if (process.env.MYSQL_URL) {
   poolConfig = {
-    uri: process.env.DATABASE_URL,
+    uri: process.env.MYSQL_URL,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
@@ -39,7 +39,7 @@ async function testConnection() {
     console.error(`  Code:    ${err.code || 'N/A'}`);
     console.error(`  Errno:   ${err.errno || 'N/A'}`);
     console.error(`  Message: ${err.message || 'No message provided by driver'}`);
-    console.error(`  Target:  ${process.env.DATABASE_URL ? 'Remote Railway URL' : 'Local fallback (127.0.0.1:3306)'}`);
+    console.error(`  Target:  ${process.env.MYSQL_URL ? 'Remote Railway URL' : 'Local fallback (127.0.0.1:3306)'}`);
   }
 }
 
