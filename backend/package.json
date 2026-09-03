@@ -9,6 +9,7 @@
     "migrate": "node migrateDB.mjs",
     "seed:demo": "node seedDemo.mjs",
     "seed:instruments": "node seedInstruments.mjs",
+    "clean": "node cleanDB.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
