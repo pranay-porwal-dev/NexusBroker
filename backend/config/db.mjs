@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { Connection } from 'mysql2';
 import mysql from "mysql2/promise";
 
+const urlDB= `mysql://root:UGzYMZWTVJPsXYnyIFtmPPkmqMKSDhCZ@mysql.railway.internal:3306/railway`;
 const pool=mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',

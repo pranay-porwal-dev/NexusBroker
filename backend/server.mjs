@@ -98,8 +98,11 @@ app.post('/api/debug/reset-engine', async (req, res) => {
     }
 });
 
-app.get("/health",(req,res)=>{
-    res.status(200).send("Ohk Nexus Broker is running absolutely fine");
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString() 
+  });
 });
 
 app.use(errorHandler);
