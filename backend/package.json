@@ -7,6 +7,8 @@
     "start": "node server.mjs",
     "dev": "nodemon server.mjs",
     "migrate": "node migrateDB.mjs",
+    "seed:demo": "node seedDemo.mjs",
+    "seed:instruments": "node seedInstruments.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
